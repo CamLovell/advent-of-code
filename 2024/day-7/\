@@ -1,0 +1,85 @@
+use std::{char, fs, str::FromStr};
+
+fn main() {
+    // Extract data into vec of stucts
+    let test_cases: Vec<_> = fs::read_to_string("demo.txt")
+        .unwrap()
+        .lines()
+        .map(|line| TestCase::from_str(line).unwrap())
+        .filter(|elem| elem.run_test().is_some())
+        .sum();
+
+    println!("{:?}", test_cases)
+}
+
+#[derive(Debug)]
+struct TestCase {
+    ans: i32,
+    numbers: Vec<i32>,
+}
+
+impl TestCase {
+    fn run_test(&self) -> Option<Vec<char>> {
+        if self.numbers.len() < 2 {
+            return None;
+        }
+
+        Self::check_vec(&self.numbers, &self.ans)
+    }
+
+    fn check_vec(vec: &[i32], ans: &i32) -> Option<Vec<char>> {
+        let start = &vec[0..=1];
+        let mut rest = vec[2..].to_vec();
+
+        let sum: i32 = start.iter().sum();
+        let prod: i32 = start.iter().product();
+
+        if rest.len() == 0 {
+            if sum == *ans {
+                return Some(vec!['+']);
+            } else if prod == *ans {
+                return Some(vec!['*']);
+            } else {
+                return None;
+            }
+        }
+
+        rest.insert(0, sum);
+        if let Some(mut res) = Self::check_vec(&rest, ans) {
+            res.insert(0, '+');
+            return Some(res);
+        } else {
+            rest[0] = prod;
+            if let Some(mut res) = Self::check_vec(&rest, ans) {
+                res.insert(0, '*');
+                return Some(res);
+            }
+        }
+        None
+    }
+}
+
+impl FromStr for TestCase {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (ans, numbers) = match s.split_once(":") {
+            Some(split) => (
+                split
+                    .0
+                    .parse()
+                    .map_err(|_| String::from("error parsing ans"))?,
+                split
+                    .1
+                    .split_whitespace()
+                    .map(|num| {
+                        num.parse::<i32>()
+                            .map_err(|_| String::from("eror parsing value"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            None => return Err(String::from("Error splitting string")),
+        };
+
+        Ok(TestCase { ans, numbers })
+    }
+}

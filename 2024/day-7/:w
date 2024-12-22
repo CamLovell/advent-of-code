@@ -1,0 +1,34 @@
+use std::{ffi::IntoStringError, fs, str::FromStr, string::ParseError};
+
+fn main() {
+    let mut test_cases: Vec<TestCase> = Vec::new();
+
+    for line in fs::read_to_string("demo.txt").unwrap().lines() {
+        println!("{line}")
+    }
+}
+
+#[derive(Debug)]
+struct TestCase {
+    ans: i32,
+    numbers: Vec<i32>,
+}
+
+impl FromStr for TestCase {
+    type Err = &str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (ans, numbers) = match s.split_once(":") {
+            Some(split) => (
+                split.0.parse().map_err(|_| "error parsing ans")?,
+                split
+                    .1
+                    .split_whitespace()
+                    .map(|num| num.parse().map_err(|_| "eror parsing value"))
+                    .collect(),
+            ),
+            None => return Err("Error splitting string"),
+        };
+
+        Ok(TestCase { ans, numbers })
+    }
+}
