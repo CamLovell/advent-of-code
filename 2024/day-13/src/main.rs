@@ -1,12 +1,19 @@
 use std::{error::Error, fmt::Display, fs, str::FromStr};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let machines = fs::read_to_string("demo.txt")?
+    let machines = fs::read_to_string("input.txt")?
         .split("\n\n")
         .map(|block| ClawMachine::from_str(block))
         .collect::<Result<Vec<_>, _>>()?;
 
-    machines.iter().for_each(|m| println!("{m:?}"));
+    println!(
+        "{}",
+        machines
+            .iter()
+            .filter_map(|m| m.get_solution())
+            .map(|(p_a, p_b)| p_a * 3 + p_b * 1)
+            .sum::<i64>()
+    );
 
     Ok(())
 }
@@ -16,6 +23,30 @@ struct ClawMachine {
     button_a: Button,
     button_b: Button,
     prize: Prize,
+}
+
+impl ClawMachine {
+    fn get_solution(&self) -> Option<(i64, i64)> {
+        // Get everything as f64 to make sure calculations don't mess up
+        let x = self.prize.x as f64;
+        let y = self.prize.y as f64;
+        let a_x = self.button_a.x_inc as f64;
+        let a_y = self.button_a.y_inc as f64;
+        let b_x = self.button_b.x_inc as f64;
+        let b_y = self.button_b.y_inc as f64;
+
+        // Calculations
+        let p_b = (x - ((a_x * y) / a_y)) / (b_x - ((a_x * b_y) / a_y));
+        let p_a = (y - p_b * b_y) / a_y;
+
+        // Check if the solution actually works (accounting for floating point error)
+        if p_a.round() * a_x + p_b.round() * b_x == x && p_a.round() * a_y + p_b.round() * b_y == y
+        {
+            Some((p_a.round() as i64, p_b.round() as i64))
+        } else {
+            None
+        }
+    }
 }
 
 impl FromStr for ClawMachine {
@@ -37,8 +68,8 @@ impl FromStr for ClawMachine {
 
 #[derive(Debug)]
 struct Button {
-    x_inc: i32,
-    y_inc: i32,
+    x_inc: i64,
+    y_inc: i64,
 }
 
 impl FromStr for Button {
@@ -49,7 +80,7 @@ impl FromStr for Button {
             return Err(ButtonError::FormatError);
         }
 
-        let incs: Vec<i32> = s
+        let incs: Vec<i64> = s
             .split_once(":")
             .unwrap()
             .1
@@ -66,8 +97,8 @@ impl FromStr for Button {
 
 #[derive(Debug)]
 struct Prize {
-    x: i32,
-    y: i32,
+    x: i64,
+    y: i64,
 }
 impl FromStr for Prize {
     type Err = PrizeError;
@@ -76,7 +107,7 @@ impl FromStr for Prize {
             return Err(PrizeError::ParseError);
         }
 
-        let loc: Vec<i32> = s
+        let loc: Vec<i64> = s
             .split_once(":")
             .unwrap()
             .1
@@ -85,8 +116,8 @@ impl FromStr for Prize {
             .collect();
 
         Ok(Prize {
-            x: loc[0],
-            y: loc[1],
+            x: loc[0] + 10000000000000,
+            y: loc[1] + 10000000000000,
         })
     }
 }
