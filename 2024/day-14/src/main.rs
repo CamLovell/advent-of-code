@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, str::FromStr};
+use std::{collections::HashMap, fs, io, str::FromStr, thread, time::Duration};
 
 fn main() {
     let map = Map {
@@ -13,24 +13,35 @@ fn main() {
         .collect();
 
     map.show_all(&robots);
-    for _ in 0..100 {
+    let mut i = 0;
+    loop {
         robots.iter_mut().for_each(|r| {
             r.step(&map);
         });
-        map.show_all(&robots);
+        i += 1;
+        if map.check_tree(&robots) {
+            map.show_all(&robots);
+            let mut input = String::new();
+            println!("Is this a christmas tree? [y/N]");
+            io::stdin().read_line(&mut input).unwrap();
+
+            if input.trim().to_lowercase() == "y" {
+                println!("Tree found on step: {i}");
+                break;
+            }
+        }
     }
     // robots.iter_mut().for_each(|r| {
     //     r.run(100, &map);
     // });
 
-    map.show_all(&robots);
     println!(
         "{:#?}",
         map.count_quadrants(&robots).iter().product::<i32>()
     )
 }
 
-#[derive(Debug)]
+#[derive(Eq, Hash, PartialEq, Debug, Clone)]
 struct Robot {
     pos: Position,
     vel: Velocity,
@@ -121,6 +132,35 @@ impl Map {
         });
         quadrants
     }
+
+    fn check_tree(&self, robots: &Vec<Robot>) -> bool {
+        let mut unique: Vec<Vec<i32>> = vec![Vec::new(); self.height as usize];
+        robots.iter().for_each(|r| {
+            if !unique[r.pos.y as usize].contains(&r.pos.x) {
+                unique[r.pos.y as usize].push(r.pos.x)
+            }
+        });
+
+        for row in 0..(self.height - 1) {
+            for x in unique[row as usize].clone() {
+                for d in (1..=4).rev() {
+                    if x - d < 0
+                        || x + d >= self.width
+                        || row + d >= self.height
+                        || !unique[(row + d) as usize].contains(&(x - d))
+                        || !unique[(row + d) as usize].contains(&(x + d))
+                    {
+                        break;
+                    }
+
+                    if d == 1 {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
 }
 
 trait FromXYStr: Sized {
@@ -162,7 +202,7 @@ impl FromStr for Position {
     }
 }
 
-#[derive(Debug)]
+#[derive(Eq, Hash, PartialEq, Debug, Clone)]
 struct Velocity {
     x: i32,
     y: i32,
